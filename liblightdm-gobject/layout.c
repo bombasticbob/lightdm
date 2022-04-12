@@ -49,6 +49,8 @@ typedef struct
 
 G_DEFINE_TYPE_WITH_PRIVATE (LightDMLayout, lightdm_layout, G_TYPE_OBJECT)
 
+#define GET_PRIVATE(obj) G_TYPE_INSTANCE_GET_PRIVATE ((obj), LIGHTDM_TYPE_LAYOUT, LightDMLayoutPrivate)
+
 static gboolean have_layouts = FALSE;
 static Display *display = NULL;
 static XklEngine *xkl_engine = NULL;
@@ -211,9 +213,7 @@ const gchar *
 lightdm_layout_get_name (LightDMLayout *layout)
 {
     g_return_val_if_fail (LIGHTDM_IS_LAYOUT (layout), NULL);
-
-    LightDMLayoutPrivate *priv = lightdm_layout_get_instance_private (layout);
-    return priv->name;
+    return GET_PRIVATE (layout)->name;
 }
 
 /**
@@ -228,9 +228,7 @@ const gchar *
 lightdm_layout_get_short_description (LightDMLayout *layout)
 {
     g_return_val_if_fail (LIGHTDM_IS_LAYOUT (layout), NULL);
-
-    LightDMLayoutPrivate *priv = lightdm_layout_get_instance_private (layout);
-    return priv->short_description;
+    return GET_PRIVATE (layout)->short_description;
 }
 
 /**
@@ -245,9 +243,7 @@ const gchar *
 lightdm_layout_get_description (LightDMLayout *layout)
 {
     g_return_val_if_fail (LIGHTDM_IS_LAYOUT (layout), NULL);
-
-    LightDMLayoutPrivate *priv = lightdm_layout_get_instance_private (layout);
-    return priv->description;
+    return GET_PRIVATE (layout)->description;
 }
 
 static void
@@ -262,7 +258,7 @@ lightdm_layout_set_property (GObject      *object,
                              GParamSpec   *pspec)
 {
     LightDMLayout *self = LIGHTDM_LAYOUT (object);
-    LightDMLayoutPrivate *priv = lightdm_layout_get_instance_private (self);
+    LightDMLayoutPrivate *priv = GET_PRIVATE (self);
 
     switch (prop_id) {
     case PROP_NAME:
@@ -311,7 +307,7 @@ static void
 lightdm_layout_finalize (GObject *object)
 {
     LightDMLayout *self = LIGHTDM_LAYOUT (object);
-    LightDMLayoutPrivate *priv = lightdm_layout_get_instance_private (self);
+    LightDMLayoutPrivate *priv = GET_PRIVATE (self);
 
     g_free (priv->name);
     g_free (priv->short_description);

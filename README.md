@@ -1,3 +1,6 @@
+# lightdm 1.30.0 (fixed/patched for RPi version)
+This source fixes issues with autologin for when lightdm has problems or X server crashes
+
 LightDM is a cross-desktop display manager. A display manager is a daemon that:
 - Runs display servers (e.g. X) where necessary.
 - Runs greeters to allow users to pick which user account and session type to use.

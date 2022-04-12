@@ -1,3 +1,7 @@
+lightdm 1.30.0 (bug fix for RPi autologin)
+  * consolidate and apply Raspberry Pi OS patches
+  * bug fix for autologin
+
 lightdm (1.30.0-0ubuntu1) eoan; urgency=medium
 
   * New upstream release:

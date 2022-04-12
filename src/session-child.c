@@ -130,8 +130,7 @@ pam_conv_cb (int msg_length, const struct pam_message **msg, struct pam_response
     write_string (username);
     gboolean auth_complete = FALSE;
     write_data (&auth_complete, sizeof (auth_complete));
-    size_t length = msg_length;
-    write_data (&length, sizeof (length));
+    write_data (&msg_length, sizeof (msg_length));
     for (int i = 0; i < msg_length; i++)
     {
         const struct pam_message *m = msg[i];
@@ -221,7 +220,7 @@ audit_event (int type, const gchar *username, uid_t uid, const gchar *remote_hos
 {
     int auditfd = audit_open ();
     if (auditfd < 0) {
-        g_printerr ("Error opening audit socket: %s\n", strerror (errno));
+        g_printerr ("Error opening audit socket: %s (B-9)\n", strerror (errno)); // Cassida mod - this really is not the end of the world - it is 'benign'
         return;
     }
 
@@ -394,7 +393,10 @@ session_child_run (int argc, char **argv)
         else
         {
             /* Set POSIX variables */
-            pam_putenv (pam_handle, "PATH=/usr/local/bin:/usr/bin:/bin");
+            if (user_get_uid (user) == 0)
+              pam_putenv (pam_handle, "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
+            else
+              pam_putenv (pam_handle, "PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games");
             pam_putenv (pam_handle, g_strdup_printf ("USER=%s", username));
             pam_putenv (pam_handle, g_strdup_printf ("LOGNAME=%s", username));
             pam_putenv (pam_handle, g_strdup_printf ("HOME=%s", user_get_home_directory (user)));
@@ -663,6 +665,9 @@ session_child_run (int argc, char **argv)
                 close (fd);
             }
         }
+
+        /* Reset SIGPIPE handler so the child has default behaviour (we disabled it at LightDM start) */
+        signal (SIGPIPE, SIG_DFL);
 
         /* Reset SIGPIPE handler so the child has default behaviour (we disabled it at LightDM start) */
         signal (SIGPIPE, SIG_DFL);

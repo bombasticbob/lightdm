@@ -68,6 +68,11 @@ typedef struct
 
     /* The greeter to be started to replace the current one */
     GreeterSession *replacement_greeter;
+
+// see https://github.com/raspberrypi-ui/lightdm-bullseye/commit/71c46713d1b17a401bfcf3d96f2dd53a181460db#
+    /* TRUE before the display server has successfully started */
+    gboolean starting;
+
 } SeatPrivate;
 
 static void seat_logger_iface_init (LoggerInterface *iface);
@@ -382,12 +387,15 @@ run_script (Seat *seat, DisplayServer *display_server, const gchar *script_name,
         process_set_env (script, "LD_LIBRARY_PATH", g_getenv ("LD_LIBRARY_PATH"));
     if (g_getenv ("PATH"))
         process_set_env (script, "PATH", g_getenv ("PATH"));
+    else
+        if (user_get_uid (user) == 0)
+            process_set_env (script, "PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
+        else
+            process_set_env (script, "PATH", "/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games");
 
     /* Variables required for regression tests */
     if (g_getenv ("LIGHTDM_TEST_ROOT"))
         process_set_env (script, "LIGHTDM_TEST_ROOT", g_getenv ("LIGHTDM_TEST_ROOT"));
-
-    process_set_env (script, "XDG_SEAT", seat_get_name (seat));
 
     if (user)
     {
@@ -455,6 +463,14 @@ display_server_stopped_cb (DisplayServer *display_server, Seat *seat)
 
     l_debug (seat, "Display server stopped");
 
+// see https://github.com/raspberrypi-ui/lightdm-bullseye/commit/71c46713d1b17a401bfcf3d96f2dd53a181460db#
+    if (priv->starting)
+    {
+        l_debug (seat, "Failed to start display server - trying to restart");
+        start_display_server (seat, display_server);
+        return;
+    }
+
     /* Run a script right after stopping the display server */
     const gchar *script = seat_get_string_property (seat, "display-stopped-script");
     if (script)
@@ -510,6 +526,21 @@ display_server_stopped_cb (DisplayServer *display_server, Seat *seat)
             }
         }
     }
+
+
+    // ---------------------------------------------------------------------------
+    // Cassida mod - ALWAYS stop the running seat
+    // Fixing the auto-login login prompt on crash problem RIGHT HERE
+    // This one line of code seems to fix EVERYTHING.  Just die.  So simple!
+    // Die and go away and be re-created so that autologin continues to behave
+    // and work as you would expect it to.  So why was it SO hard to figure
+    // this out?  I shall avoid negative comments on the quality of the code and
+    // be glad it is over.  I suppose now I can regain my sanity...
+    // ---------------------------------------------------------------------------
+
+    l_debug (seat, "Stopping; otherwise the auto-login misbehaves");
+    seat_stop(seat);  // NOTE:  this nmight result in an exit(1) although it is being called above the same way
+                      //        if that happens systemd restarts lightdm.  This is sloppy but what else can I do?
 
     g_object_unref (display_server);
 }
@@ -567,6 +598,8 @@ static void
 switch_to_greeter_from_failed_session (Seat *seat, Session *session)
 {
     SeatPrivate *priv = seat_get_instance_private (seat);
+
+    l_debug (seat, "WARNING - switch to greeter from failed session"); // Cassida mod - add debug reporting to this step
 
     /* Switch to greeter if one open */
     GreeterSession *greeter_session = find_resettable_greeter (seat);
@@ -956,7 +989,7 @@ find_session_config (Seat *seat, const gchar *sessions_dir, const gchar *session
     for (int i = 0; dirs[i]; i++)
     {
         const gchar *default_session_type = "x";
-        if (dirs[i] != NULL && g_str_has_suffix (dirs[i], "/wayland-sessions") == TRUE)
+        if (strcmp (dirs[i], WAYLAND_SESSIONS_DIR) == 0)
             default_session_type = "wayland";
 
         g_autofree gchar *filename = g_strdup_printf ("%s.desktop", session_name);
@@ -1326,8 +1359,14 @@ find_session_for_display_server (Seat *seat, DisplayServer *display_server)
 static void
 display_server_ready_cb (DisplayServer *display_server, Seat *seat)
 {
+    SeatPrivate *priv = seat_get_instance_private (seat);
+
     /* Run setup script */
     const gchar *script = seat_get_string_property (seat, "display-setup-script");
+
+// see https://github.com/raspberrypi-ui/lightdm-bullseye/commit/71c46713d1b17a401bfcf3d96f2dd53a181460db#
+    priv->starting = FALSE;
+
     if (script && !run_script (seat, display_server, script, NULL))
     {
         l_debug (seat, "Stopping display server due to failed setup script");
@@ -1457,6 +1496,8 @@ switch_authentication_complete_cb (Session *session, Seat *seat)
 
         return;
     }
+
+    l_debug (seat, "INFO - stopping the current session"); // Cassida mod - add debug reporting to this step
 
     session_stop (session);
 
@@ -1714,6 +1755,10 @@ seat_real_start (Seat *seat)
 
             DisplayServer *display_server = create_display_server (seat, session);
             session_set_display_server (session, display_server);
+
+// see https://github.com/raspberrypi-ui/lightdm-bullseye/commit/71c46713d1b17a401bfcf3d96f2dd53a181460db#
+            priv->starting = TRUE;
+
             if (!display_server || !start_display_server (seat, display_server))
             {
                 l_debug (seat, "Can't create display server for automatic login");

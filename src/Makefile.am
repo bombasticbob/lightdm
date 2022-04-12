@@ -77,11 +77,12 @@ lightdm_CFLAGS = \
 	$(LIGHTDM_CFLAGS) \
 	-I"$(top_srcdir)/common" \
 	-DSBIN_DIR=\"$(sbindir)\" \
-	-DUSERS_DIR=\"$(localstatedir)/lib/lightdm-data\" \
+	-DUSERS_DIR=\"$(localstatedir)/lib/lightdm/data\" \
 	-DLOG_DIR=\"$(localstatedir)/log/lightdm\" \
 	-DRUN_DIR=\"$(localstatedir)/run/lightdm\" \
 	-DCACHE_DIR=\"$(localstatedir)/cache/lightdm\" \
 	-DSESSIONS_DIR=\"$(pkgdatadir)/sessions:$(datadir)/xsessions:$(datadir)/wayland-sessions\" \
+	-DWAYLAND_SESSIONS_DIR=\"$(datadir)/wayland-sessions\" \
 	-DREMOTE_SESSIONS_DIR=\"$(pkgdatadir)/remote-sessions\"
 
 lightdm_LDADD = \

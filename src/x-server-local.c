@@ -89,7 +89,7 @@ find_version (const gchar *line)
     return g_strdup (line + strlen (XORG_VERSION_PREFIX));
 }
 
-static const gchar *
+const gchar *
 x_server_local_get_version (void)
 {
     if (version)
@@ -114,7 +114,7 @@ x_server_local_get_version (void)
     return version;
 }
 
-static gint
+gint
 x_server_local_version_compare (guint major, guint minor)
 {
     x_server_local_get_version ();
@@ -153,7 +153,7 @@ display_number_in_use (guint display_number)
     return in_use;
 }
 
-static guint
+guint
 x_server_local_get_unused_display_number (void)
 {
     guint number = config_get_integer (config_get_instance (), "LightDM", "minimum-display-number");
@@ -165,7 +165,7 @@ x_server_local_get_unused_display_number (void)
     return number;
 }
 
-static void
+void
 x_server_local_release_display_number (guint display_number)
 {
     for (GList *link = display_numbers; link; link = link->next)
@@ -442,7 +442,8 @@ x_server_local_start (DisplayServer *display_server)
     XServerLocal *server = X_SERVER_LOCAL (display_server);
     XServerLocalPrivate *priv = x_server_local_get_instance_private (server);
 
-    g_return_val_if_fail (priv->x_server_process == NULL, FALSE);
+// see https://github.com/raspberrypi-ui/lightdm-bullseye/commit/71c46713d1b17a401bfcf3d96f2dd53a181460db#
+//    g_return_val_if_fail (priv->x_server_process == NULL, FALSE);
 
     priv->got_signal = FALSE;
 

@@ -73,10 +73,6 @@ static GHashTable *processes = NULL;
 static pid_t signal_pid;
 static int signal_pipe[2];
 
-#ifndef HAVE_CLEARENV
-extern char **environ;
-#endif
-
 Process *
 process_get_current (void)
 {
@@ -249,6 +245,9 @@ process_start (Process *process, gboolean block)
 #endif
         for (guint i = 0; i < env_length; i++)
             setenv (env_keys[i], env_values[i], TRUE);
+
+        /* Reset SIGPIPE handler so the child has default behaviour (we disabled it at LightDM start) */
+        signal (SIGPIPE, SIG_DFL);
 
         /* Reset SIGPIPE handler so the child has default behaviour (we disabled it at LightDM start) */
         signal (SIGPIPE, SIG_DFL);
